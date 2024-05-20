@@ -43,14 +43,41 @@ def get_dataset(dataset_name, dataset_path, transform: TF, is_train = True, ):
     else:
         raise NotImplementedError('Currently unavailable dataset')
 
-def parse_train_config(config_total):
+def get_train_set_config(config_total):
     
     train_configs = config_total['train']
     dset_name = train_configs['dataset_name']
     dset_path = train_configs['dataset_path']
-    optim_name = train_configs['optim_name']
-    epoch_base = train_configs['epoch_base']
-    epoch_per_task = train_configs['epoch_per_task']
-    # = train_configs['']
     
-    return dset_name, dset_path, optim_name, epoch_base, epoch_per_task
+    return dset_name, dset_path
+
+def get_train_hyper_parameters(config_total):
+    hparams = config_total['hparam']
+    
+    optim_name = hparams['optim_name']
+    learning_rate = hparams['learning_rate']
+    epoch_base = hparams['epoch_base']
+    epoch_per_task = hparams['epoch_per_task']
+    batch_size = hparams['batch_size']
+    
+    return optim_name, learning_rate, epoch_base, \
+        epoch_per_task, batch_size
+        
+def get_task_info(config_total):
+    task_info = config_total['task_info']
+    
+    cls_total = task_info['cls_total']
+    cls_base = task_info['cls_base']
+    num_tasks = task_info['num_tasks']
+    cls_per_task = task_info['cls_per_task']
+    
+    return cls_total, cls_base, num_tasks, cls_per_task
+
+def get_optim(optim_name, MODEL : nn.Module, lr):
+    optim_name = optim_name.lower()
+    if optim_name == 'adam':
+        return optim.Adam(MODEL.parameters(), lr=lr)
+    elif optim_name == 'sgd':
+        return optim.SGD(MODEL.parameters(), lr=lr)
+    else:
+        raise NotImplementedError('Currently not available')
