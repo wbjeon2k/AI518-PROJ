@@ -16,6 +16,7 @@ from utils import config
 
 def test_performance_of_task(MODEL : nn.Module, task_set : Dataset):
     """
+    TODO: make a test loop that takes task_set
     evaluate test loss for the task_set
     """
     pass
@@ -62,6 +63,7 @@ def train_CIL(MODEL: nn.Module):
     
     def train_one_epoch(MODEL: nn.Module, DATALOADER, LOSSFUNC, OPTIM):
         """
+        TODO:
         implement a generic training loop looks like below.
         """
         # for x,_ in BASE_LOADER:
@@ -84,7 +86,9 @@ def train_CIL(MODEL: nn.Module):
             shuffle=True, num_workers=4, drop_last=True
         )
         for j in range(epoch_per_task):
-            """ """
+            """
+            TODO: replace with proper train_one_epoch
+            """
             # train_one_epoch(MODEL,ITH_TASK_LOADER, )
         
         #measure performance for the base task
