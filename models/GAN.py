@@ -139,6 +139,7 @@ class Generator(nn.Module):
         ]
         self.net = nn.Sequential(*network)
         self.noise = torch.distributions.Normal(torch.tensor(0.), torch.tensor(1.))
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, z):
         return self.net(self.fc(z).reshape(-1, 256, 4, 4))
@@ -171,11 +172,13 @@ class GAN(nn.Module):
         self.discriminator = Discriminator().to(self.device)
         self.generator = Generator().to(self.device)
 
-    def training(self, train_loader):
+    def learning(self, train_loader):
         generator_opt = torch.optim.Adam(self.generator.parameters(), lr=2e-4, betas=(0, 0.9))
         discriminator_opt = torch.optim.Adam(self.discriminator.parameters(), lr=2e-4, betas=(0, 0.9))
-        count = 0
-        for i, x in enumerate(train_loader):
+        #count = 0
+        x = train_loader
+        if True:
+        #for i, x in enumerate(train_loader):
             x = torch.tensor(x).float().to(self.device)
             x = 2 * (x - 0.5)
             discriminator_opt.zero_grad()
@@ -193,10 +196,9 @@ class GAN(nn.Module):
             discriminator_loss = self.discriminator(generating).mean() - self.discriminator(x).mean() + 10 * gradient_penalty
             discriminator_loss.backward()
             discriminator_opt.step()
-            if count % 5 == 0 :
-                generator_opt.zero_grad()
-                generating = self.generator.sample(256)
-                generator_loss = -self.discriminator(generating).mean()
-                generator_loss.backward()
-                generator_opt.step()
-            count = count + 1
+            generator_opt.zero_grad()
+            generating = self.generator.sample(256)
+            generator_loss = -self.discriminator(generating).mean()
+            generator_loss.backward()
+            generator_opt.step()
+            

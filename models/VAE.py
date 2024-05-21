@@ -69,7 +69,7 @@ class VAE(nn.Module):
 
         return reconstructions
         
-    def training(self, x):
+    def learning(self, x):
         train_loss = self.loss(x)
         self.optimizer.zero_grad()
         train_loss.backward()
