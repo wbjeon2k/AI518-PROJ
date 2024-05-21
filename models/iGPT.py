@@ -193,6 +193,7 @@ class AutoregressiveTransformer(nn.Module):
         generated_images_rgb = generated_images_rgb.reshape(num_samples, H, W, 3)  # Reshape to (num_samples, H, W, C)
 
         return generated_images_rgb
+    
     def loss(self, x):
         criterion = nn.CrossEntropyLoss()        
         train_processed = self.preprocess_data(x)
@@ -206,93 +207,3 @@ class AutoregressiveTransformer(nn.Module):
         losses = self.loss(x)
         losses.backward()
         optimizer.step()
-        
-        
-
-
-def q3_b(train_data, test_data, image_shape, dset_id):
-    """
-    train_data: A (n_train, H, W, C) uint8 numpy array of color images with values in {0, 1, 2, 3}
-    test_data: A (n_test, H, W, C) uint8 numpy array of color images with values in {0, 1, 2, 3}
-    image_shape: (H, W, C), height, width, and # of channels of the image
-    dset_id: An identifying number of which dataset is given (1 or 2). Most likely
-           used to set different hyperparameters for different datasets
-    
-    Returns
-    - a (# of training iterations,) numpy array of train_losses evaluated every minibatch
-    - a (# of epochs + 1,) numpy array of test_losses evaluated once at initialization and after each epoch
-    - a numpy array of size (100, H, W, C) of samples with values in {0, 1, 2, 3}
-    """ 
-    # Hyperparameters
-    batch_size = 64
-    learning_rate = 1e-3
-    epochs = 10
-
-    # Model Initialization
-    model = AutoregressiveTransformer(input_dim=65, max_seq_length=(image_shape[0]*image_shape[1] + 1)).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100)
-    criterion = nn.CrossEntropyLoss()
-
-    # Data Preprocessing
-    # - Flatten images
-    # - Add <bos> tokens
-    train_data_processed = model.preprocess_data(train_data)
-    test_data_processed = model.preprocess_data(test_data)
-
-    train_losses = []
-    test_losses = []
-
-    for epoch in range(epochs):
-        model.train()
-        total_train_loss = 0.0
-
-        np.random.shuffle(train_data)
-        # Calculate the number of batches
-        num_batches = train_data.shape[0] // batch_size
-    
-        for i in range(train_data.shape[0] // batch_size):
-            start_idx = i * batch_size
-            end_idx = start_idx + batch_size
-            batch_data = train_data_processed[start_idx:end_idx]
-
-            inputs = batch_data[:, :-1].to(device)  # All tokens except the last
-            targets = batch_data[:, 1:].to(device)  # All tokens except the first
-    
-        
-            # Forward pass
-            optimizer.zero_grad()
-            outputs = model(inputs)
-
-            # Compute loss
-            loss = criterion(outputs.view(-1, outputs.size(-1)), targets.view(-1))
-            total_train_loss += loss.item()
-
-            # Backward pass and optimize
-            loss.backward()
-            optimizer.step()
-            # Learning rate scheduling
-            scheduler.step()
-
-            train_losses.append(loss.item())
-
-        # Evaluate on the test set
-        model.eval()
-        total_test_loss = 0.0
-        with torch.no_grad():
-            num_testbatch = test_data.shape[0] // batch_size
-            for i in range(test_data.shape[0] // batch_size):
-                batch_data = test_data_processed[i * batch_size:(i + 1) * batch_size]
-                inputs = batch_data[:, :-1].to(device)  # All tokens except the last
-                targets = batch_data[:, 1:].to(device)  # All tokens except the first
-        
-                outputs = model(inputs)
-                test_loss = criterion(outputs.view(-1, outputs.size(-1)), targets.view(-1))
-                total_test_loss += test_loss.item()
-                test_losses.append(test_loss.item())
-
-        print(f'Epoch {epoch+1}/{epochs}, Train Loss: {total_train_loss/num_batches:.4f}, Test Loss: {total_test_loss/num_testbatch:.4f} lr: {scheduler.get_last_lr()[0]}')
-
-
-    # Sampling new images
-    samples = model.generate_samples(num_samples=100, image_shape=image_shape, device=device)
