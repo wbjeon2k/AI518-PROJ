@@ -84,9 +84,9 @@ class Block(nn.Module):
         return x
 
 class AutoregressiveTransformer(nn.Module): 
-    def __init__(self, input_dim=3, n_head=4,
+    def __init__(self, input_dim=10000, n_head=4,
                  num_layers=2,
-                 max_seq_length=401):
+                 max_seq_length=1025):
         
 
 
@@ -115,7 +115,7 @@ class AutoregressiveTransformer(nn.Module):
         self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head, block_size=max_seq_length) for _ in range(num_layers)])
         self.ln_f = nn.LayerNorm(n_embd) # final layer norm
         self.lm_head = nn.Linear(n_embd, input_dim)
-
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, idx):
         # src shape: [batch_size, seq_len]
@@ -132,31 +132,24 @@ class AutoregressiveTransformer(nn.Module):
         logits = self.lm_head(x) # (B,T,vocab_size)
 
         return logits
-    def map_rgb_to_token(rgb_pixel):
-        # Assuming rgb_pixel is in the format [R, G, B] with 2-bit per channel
-        token = (rgb_pixel[0] << 4) + (rgb_pixel[1] << 2) + rgb_pixel[2]
-        
-        return token
+    
     def generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
     
     def preprocess_data(self, data, bos_token=2):
-        """
-        Preprocess color image data for the autoregressive transformer.
-        Each RGB pixel is mapped to a single token, and a <bos> token is added at the beginning.
-
-        :param data: A (n_samples, H, W, C) numpy array of images with 2-bit per channel.
-        :param bos_token: An integer representing the <bos> token.
-        :return: A PyTorch tensor of shape (n_samples, H*W + 1).
-        """
         n_samples, H, W, C = data.shape
-
+        
         # Function to map each RGB pixel to a cluster token
-
+        def map_rgb_to_token(rgb_pixel):
+            # Assuming rgb_pixel is in the format [R, G, B] with 2-bit per channel
+            token = (rgb_pixel[0] << 4) + (rgb_pixel[1] << 2) + rgb_pixel[2]
+            
+            return token
         # Apply the mapping to each pixel
-        data_tokenized = np.apply_along_axis(self.map_rgb_to_token, -1, data)
+
+        data_tokenized = np.apply_along_axis(map_rgb_to_token, -1, data)
 
         # Flatten the image
         data_tokenized = data_tokenized.reshape(n_samples, -1)  # Shape: (n_samples, H*W)
@@ -168,7 +161,7 @@ class AutoregressiveTransformer(nn.Module):
 
         return data_tokenized
 
-    def generate_samples(self, num_samples, image_shape, device, bos_token=2):
+    def sample(self, num_samples = 100, image_shape = (32,32,3), bos_token=2):
         H, W, _ = image_shape  # C is not used directly as each token represents a full RGB pixel
         src = torch.full((num_samples, 1), bos_token, dtype=torch.long, device=device)
 
@@ -202,8 +195,11 @@ class AutoregressiveTransformer(nn.Module):
         outputs = self.forward(inputs)
         return criterion(outputs.view(-1, outputs.size(-1)), targets.view(-1))
 
-    def training(self, x):
+    def learning(self, x):
+        x = x * 255
+        x = x.type(torch.int32)
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         losses = self.loss(x)
         losses.backward()
         optimizer.step()
+        

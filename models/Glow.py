@@ -336,7 +336,7 @@ class Block(nn.Module):
 
 class Glow(nn.Module):
     def __init__(
-        self, in_channel, n_flow, n_block, affine=True, conv_lu=True
+        self, in_channel=3, n_flow=32, n_block=4, affine=True, conv_lu=True
     ):
         super().__init__()
 
@@ -364,7 +364,12 @@ class Glow(nn.Module):
 
         return log_p_sum, logdet, z_outs
 
-    def sampling(self, z_list, reconstruct=False):
+    def sample(self, reconstruct=False):
+        z_list = []
+        z_shapes = self.calc_z_shapes(3, 32, 32, 4)
+        for z in z_shapes:
+            z_new = torch.randn(20, *z) * 0.7
+            z_list.append(z_new.to(self.device))
         for i, block in enumerate(self.blocks[::-1]):
             if i == 0:
                 input = block.reverse(z_list[-1], z_list[-1], reconstruct=reconstruct)
@@ -405,7 +410,7 @@ class Glow(nn.Module):
         )
     
 
-    def traning(self, x):
+    def learning(self, x):
         optimizer = optim.Adam(self.parameters(), lr=1e-4)
         n_bins = 2.0**8
         z_sample = []
@@ -413,11 +418,10 @@ class Glow(nn.Module):
         for z in z_shapes:
             z_new = torch.randn(20, *z) * 0.7
             z_sample.append(z_new.to(self.device))
-        #self.device추가
         x.to(self.device)
         x = x * 255
         x = x / n_bins - 0.5
-        log_p, logdet, _ = self.forward(x + torch.rand_like(x) / n_bins)
+        log_p, logdet, _ = self.forward((x + torch.rand_like(x) / n_bins).to(self.device))
         logdet = logdet.mean()
         loss, log_p, log_det = self.calc_loss(log_p, logdet, 32, n_bins)
         optimizer.zero_grad()

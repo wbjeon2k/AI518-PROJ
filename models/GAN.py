@@ -201,4 +201,8 @@ class GAN(nn.Module):
             generator_loss = -self.discriminator(generating).mean()
             generator_loss.backward()
             generator_opt.step()
+    def sample(self):
+        return self.generator.sample(100)
+    
+
             
