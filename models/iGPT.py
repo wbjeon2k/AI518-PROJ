@@ -116,12 +116,16 @@ class AutoregressiveTransformer(nn.Module):
         self.ln_f = nn.LayerNorm(n_embd) # final layer norm
         self.lm_head = nn.Linear(n_embd, input_dim)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        self.blocks.to(self.device)
+        self.lm_head.to(self.device)
 
     def forward(self, idx):
         # src shape: [batch_size, seq_len]
 
         B, T = idx.shape
 
+        idx = idx.to(self.device)
         # idx and targets are both (B,T) tensor of integers
         tok_emb = self.token_embedding_table(idx) # (B,T,C)
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,C)
