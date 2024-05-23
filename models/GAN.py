@@ -228,13 +228,15 @@ class GAN(nn.Module):
         #number of samples should be large enough to prevent numerical error
         x = x.clone().detach().float().to(self.device)
         x = 2 * (x - 0.5)
-        fake = self.generator.sample(x.shape[0])
-        x_int = x.clone().detach().type(torch.uint8).to(self.device)
+        fake = self.generator.sample(x.shape[0]).type(dtype=torch.uint8)
+        x_int = (x.clone().detach().type(dtype=torch.uint8) * 0.5 + 0.5)*255
+        x_int = x_int.type(dtype=torch.uint8)
         # set pfw device or fid will be done in cpu;;
         # return pfw.fid(torch.Tensor(fake), torch.Tensor(x), device = self.device)
         
         # replace pfw with torchmetrics FID to test if numerical error is solved
-        fid = FID(feature=2048, input_img_size=(x.shape[1], x.shape[2], x.shape[3])).to(self.device)
+        fid = FID(feature=2048, input_img_size=(x.shape[1], x.shape[2], x.shape[3]),
+                  normalize=True).to(self.device)
         fid.update(x_int, real=True)
         fid.update(fake, real=False)
         return fid.compute()
