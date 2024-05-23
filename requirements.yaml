@@ -183,9 +183,11 @@ dependencies:
       - opencv-python==4.9.0.80
       - pretty-errors==1.2.25
       - pyparsing==3.1.2
+      - pytorch-fid-wrapper==0.0.4
       - scikit-learn==1.4.2
       - scipy==1.13.0
       - threadpoolctl==3.5.0
+      - torch-fidelity==0.3.0
       - torchmetrics==1.4.0
       - tqdm==4.66.2
       - widgetsnbextension==4.0.10
