@@ -148,7 +148,7 @@ class AutoregressiveTransformer(nn.Module):
             
             return token
         # Apply the mapping to each pixel
-
+        data = data.cpu()
         data_tokenized = np.apply_along_axis(map_rgb_to_token, -1, data)
 
         # Flatten the image
