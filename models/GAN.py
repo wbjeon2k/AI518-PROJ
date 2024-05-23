@@ -8,6 +8,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import pytorch_fid_wrapper as pfw
+from torchmetrics.image.fid import FrechetInceptionDistance as FID
 
 
 class DepthToSpace(nn.Module):
@@ -180,7 +181,16 @@ class GAN(nn.Module):
         x = train_loader
         if True:
         #for i, x in enumerate(train_loader):
-            x = torch.tensor(x).float().to(self.device)
+            """
+            UserWarning:
+            To copy construct from a tensor, 
+            it is recommended to use sourceTensor.clone().detach() or 
+            sourceTensor.clone().detach().requires_grad_(True),
+            rather than torch.tensor(sourceTensor).
+            """
+            #BEFORE: x = torch.tensor(x).float().to(self.device)
+            #FIX:
+            x = x.clone().detach().float().to(self.device)
             x = 2 * (x - 0.5)
             self.discriminator_opt.zero_grad()
             generating = self.generator.sample(x.shape[0])
@@ -211,8 +221,20 @@ class GAN(nn.Module):
     def sample(self):
         return ((self.generator.sample(16).permute(0, 2, 3, 1).cpu().detach().numpy())* 0.5 + 0.5) * 255
     
-    def testing(self, x):
-        x = torch.tensor(x).float().to(self.device)
+    def testing(self, x : torch.Tensor):
+        #pytorch_fid_wrapper/fid_score.py", line 166, in calculate_frechet_distance
+        #https://github.com/bioinf-jku/TTUR/issues/4
+        #https://github.com/bioinf-jku/TTUR/issues/4#issuecomment-363432195
+        #number of samples should be large enough to prevent numerical error
+        x = x.clone().detach().float().to(self.device)
         x = 2 * (x - 0.5)
         fake = self.generator.sample(x.shape[0])
-        return pfw.fid(torch.Tensor(fake), torch.Tensor(x))
+        x_int = x.clone().detach().to(dtype=torch.uint8).to(self.device)
+        # set pfw device or fid will be done in cpu;;
+        # return pfw.fid(torch.Tensor(fake), torch.Tensor(x), device = self.device)
+        
+        # replace pfw with torchmetrics FID to test if numerical error is solved
+        fid  = FID(feature=2048, input_img_size=(x.shape[1], x.shape[2], x.shape[3])).to(self.device)
+        fid.update(x_int, real=True)
+        fid.update(fake, real=False)
+        return fid.compute()

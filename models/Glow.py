@@ -411,6 +411,8 @@ class Glow(nn.Module):
     
 
     def learning(self, x):
+        # set x device same with model's device
+        x = x.to(self.device)
         optimizer = optim.Adam(self.parameters(), lr=1e-4)
         n_bins = 2.0**8
         z_sample = []

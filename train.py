@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+import torchvision.transforms as TF
 import yaml
 from tqdm import tqdm
 import hashlib
@@ -19,18 +20,28 @@ from utils import config
 # implement training loop for the generated CIL task
 
 def test_performance_of_task(MODEL : nn.Module, task_set : Dataset):
-    MODEL.testing(task_set)
+    TEST_LOADER = DataLoader(
+        task_set, batch_size=256, num_workers=4
+    )
+    test_loss = 0
+    for x,_ in TEST_LOADER:
+        batch_loss = MODEL.testing(x)
+        test_loss += batch_loss.item()
+        
+    return test_loss
 
 def train_CIL(MODEL: nn.Module):
     # get config from config.yaml
     cfg_dict = config.load_config_from_yaml()
     
     #get train configs
-    dset_name, dset_path = config.get_train_hyper_parameters(cfg_dict)
+    dset_name, dset_path = config.get_train_set_config(cfg_dict)
     
     #train for the base task
-    TRAIN_SET_WHOLE = config.get_dataset(dset_name, dset_path, is_train=True)
-    TEST_SET_WHOLE = config.get_dataset(dset_name, dset_path, is_train=False)
+    TRAIN_TRANSFORM = config.get_transform(is_train=True)
+    TEST_TRANSFORM = config.get_transform(is_train=False)
+    TRAIN_SET_WHOLE = config.get_dataset(dset_name, dset_path, TRAIN_TRANSFORM,is_train=True)
+    TEST_SET_WHOLE = config.get_dataset(dset_name, dset_path, TEST_TRANSFORM, is_train=False)
     
     cls_total, cls_base, num_tasks, cls_per_task = config.get_task_info(cfg_dict)
     
@@ -94,16 +105,19 @@ def train_CIL(MODEL: nn.Module):
         
     # save training results
     hashlib.sha1().update(str(time.time()).encode("utf-8"))
-    experiment_key = str(hashlib.sha1().hexdigest()[:10])
+    experiment_key = str(hashlib.sha1().hexdigest()[30:40])
     
-    with open(f'{experiment_key}_train_set_info.yml', 'w') as outfile:
-        yaml.dump(train_set_info, outfile, default_flow_style=True)
+    with open(f'result/{experiment_key}_train_set_info.json', 'w') as outfile:
+        json.dump(train_set_info, outfile, ensure_ascii=True, indent=4)
         
-    with open(f'{experiment_key}_test_set_info.yml', 'w') as outfile:
-        yaml.dump(test_set_info, outfile, default_flow_style=True)
+    with open(f'result/{experiment_key}_test_set_info.json', 'w') as outfile:
+        json.dump(test_set_info, outfile,ensure_ascii=True, indent=4)
         
-    with open(f'{experiment_key}_train_result.json', 'w') as f:
+    with open(f'result/{experiment_key}_train_result.json', 'w') as f:
         json.dump(TRAIN_RESULT, f, ensure_ascii=True, indent=4)
-        
-    torch.save(MODEL.state_dict(), f'{experiment_key}_model.pth')
+    
+    with open(f'result/{experiment_key}_cfg.json', 'w') as f:
+        json.dump(cfg_dict, f, ensure_ascii=True, indent=4)
+      
+    torch.save(MODEL.state_dict(), f'result/{experiment_key}_model.pth')
     # end of CIL training

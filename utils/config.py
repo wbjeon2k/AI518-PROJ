@@ -33,13 +33,13 @@ def get_dataset(dataset_name, dataset_path, transform: TF, is_train = True, ):
     dataset_name = dataset_name.lower()
     
     if dataset_name == 'cifar10':
-        return CIFAR10(root=dataset_path, train=is_train, transform=transform)
+        return CIFAR10(root=dataset_path, train=is_train, transform=transform, download= True)
     elif dataset_name == 'cifar100':
-        return CIFAR100(root=dataset_path, train=is_train, transform=transform)
+        return CIFAR100(root=dataset_path, train=is_train, transform=transform, download= True)
     elif dataset_name == 'mnist':
-        return MNIST(root=dataset_path, train=is_train, transform=transform)
+        return MNIST(root=dataset_path, train=is_train, transform=transform, download= True)
     elif dataset_name == 'fmnist':
-        return FashionMNIST(root=dataset_path, train=is_train, transform=transform)
+        return FashionMNIST(root=dataset_path, train=is_train, transform=transform, download= True)
     else:
         raise NotImplementedError('Currently unavailable dataset')
 
@@ -81,3 +81,12 @@ def get_optim(optim_name, MODEL : nn.Module, lr):
         return optim.SGD(MODEL.parameters(), lr=lr)
     else:
         raise NotImplementedError('Currently not available')
+    
+train_transform = TF.ToTensor()
+test_transform = TF.ToTensor()
+
+def get_transform(is_train = True):
+    if is_train is True:
+        return train_transform
+    else:
+        return test_transform

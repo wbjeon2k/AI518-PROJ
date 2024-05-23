@@ -36,19 +36,19 @@ def generate_task_by_idx(num_total, num_base, num_tasks, cls_per_task, as_list =
     ret = dict()
     
     permute = np.random.permutation(num_total)
-    cls_base = permute[:num_base]
+    cls_base = permute[:num_base].tolist()
     ret['base'] = cls_base
     
     if as_list is True:
         start_idx = num_base
         for i in range(len(cls_per_task)):
-            cls_task_i = permute[start_idx:start_idx+cls_per_task[i]]
+            cls_task_i = permute[start_idx:start_idx+cls_per_task[i]].tolist()
             start_idx = start_idx + cls_per_task[i]
             ret[f'task{i}'] = cls_task_i
     else:
         start_idx = num_base
         for i in range(num_tasks):
-            cls_task_i = permute[start_idx : start_idx + cls_per_task]
+            cls_task_i = permute[start_idx : start_idx + cls_per_task].tolist()
             start_idx += cls_per_task
             ret[f'task{i}'] = cls_task_i
             
@@ -86,6 +86,8 @@ def generate_CIL_task(DATASET : Dataset, debug = False, **kwargs):
     # list of [base_subset, ith_task_subset]
     ret = []
     
+    total_idx_list = dict()
+    
     # create base task subset
     base_idx_list = task_cls_idx['base']
     base_idx = []
@@ -95,6 +97,7 @@ def generate_CIL_task(DATASET : Dataset, debug = False, **kwargs):
         base_idx.extend(all_idx_of_cls)
     base_subset = Subset(DATASET, indices=base_idx)
     ret.append(base_subset)
+    total_idx_list['base'] = base_idx
     
     #create subsets for tasks
     for i in range(num_tasks):
@@ -106,5 +109,8 @@ def generate_CIL_task(DATASET : Dataset, debug = False, **kwargs):
             ith_task_idx.extend(all_idx_of_cls)
         ith_subset = Subset(DATASET, indices=ith_task_idx)
         ret.append(ith_subset)
+        total_idx_list[f'task{i}'] = ith_task_idx
+        
+    task_cls_idx['idx'] = total_idx_list
     
     return ret, task_cls_idx

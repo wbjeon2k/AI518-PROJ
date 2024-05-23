@@ -1,7 +1,10 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
-
+result/*
 /data/data
+data/cifar-10*
+*/.tar
+*/.tar.gz
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

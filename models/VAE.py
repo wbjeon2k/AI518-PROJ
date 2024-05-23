@@ -36,7 +36,12 @@ class VAE(nn.Module):
         nn.Conv2d(32, 3, 3, 1, 1)
         )
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = nn.Sequential(self.encoder, self.decoder)
+        
+        # set device
+        # self.encoder.to(self.device)
+        # self.decoder.to(self.device)
+        
+        self.model = nn.Sequential(self.encoder, self.decoder).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr= 0.001)
 
     def sample(self):
@@ -70,6 +75,8 @@ class VAE(nn.Module):
         return reconstructions
         
     def learning(self, x):
+        # set x device same with model's device
+        x = x.to(self.device)
         train_loss = self.loss(x)
         self.optimizer.zero_grad()
         train_loss.backward()
@@ -78,4 +85,5 @@ class VAE(nn.Module):
         return train_loss    
 
     def testing(self, x):
+        x = x.to(self.device)
         return self.loss(x)

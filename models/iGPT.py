@@ -196,6 +196,8 @@ class AutoregressiveTransformer(nn.Module):
         return criterion(outputs.view(-1, outputs.size(-1)), targets.view(-1))
 
     def learning(self, x):
+        # set x device same with model's device
+        x = x.to(self.device)
         x = x * 255
         x = x.type(torch.int32)
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
