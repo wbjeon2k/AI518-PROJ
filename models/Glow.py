@@ -429,3 +429,6 @@ class Glow(nn.Module):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        
+    def testing(self, x):
+        pass

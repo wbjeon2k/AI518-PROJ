@@ -212,3 +212,6 @@ class AutoregressiveTransformer(nn.Module):
         losses.backward()
         optimizer.step()
         
+    def testing(self, x):
+        pass
+        
