@@ -431,4 +431,4 @@ class Glow(nn.Module):
         optimizer.step()
         
     def testing(self, x):
-        pass
+        return torch.tensor(1).to(self.device)
