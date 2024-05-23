@@ -116,6 +116,7 @@ def train_CIL(MODEL: nn.Module):
     with open(f'result/{experiment_key}_train_result.json', 'w') as f:
         json.dump(TRAIN_RESULT, f, ensure_ascii=True, indent=4)
     
+    cfg_dict['model_type'] = MODEL.__class__.__name__
     with open(f'result/{experiment_key}_cfg.json', 'w') as f:
         json.dump(cfg_dict, f, ensure_ascii=True, indent=4)
       
