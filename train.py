@@ -8,6 +8,10 @@ import hashlib
 import time
 import json
 
+
+# import models
+from models import GAN, Glow, iGPT, VAE
+
 # custom utils
 from data import classincremental
 from utils import config
@@ -15,11 +19,7 @@ from utils import config
 # implement training loop for the generated CIL task
 
 def test_performance_of_task(MODEL : nn.Module, task_set : Dataset):
-    """
-    TODO: make a test loop that takes task_set
-    evaluate test loss for the task_set
-    """
-    pass
+    MODEL.testing(task_set)
 
 def train_CIL(MODEL: nn.Module):
     # get config from config.yaml
@@ -61,20 +61,17 @@ def train_CIL(MODEL: nn.Module):
     
     TRAIN_RESULT = dict()
     
-    def train_one_epoch(MODEL: nn.Module, DATALOADER, LOSSFUNC, OPTIM):
+    def train_one_epoch(MODEL: nn.Module, DATALOADER):
         """
         TODO:
         implement a generic training loop looks like below.
+        Dataloader =>>>>
         """
-        # for x,_ in BASE_LOADER:
-        #     pred = MODEL(x)
-        #     loss = ...
-        #     OPTIM.zero_grad()
-        #     loss.backward()
-        #     OPTIM.step()
-    
+        for x, _ in DATALOADER:
+            MODEL.learning(x)
+
     for i in tqdm(range(epoch_base)):
-        train_one_epoch(MODEL)
+        train_one_epoch(MODEL, BASE_LOADER)
     
     BASE_TEST_SET = task_to_test[0]
     TRAIN_RESULT['base'] = test_performance_of_task(MODEL, BASE_TEST_SET)
@@ -89,7 +86,7 @@ def train_CIL(MODEL: nn.Module):
             """
             TODO: replace with proper train_one_epoch
             """
-            # train_one_epoch(MODEL,ITH_TASK_LOADER, )
+            train_one_epoch(MODEL,ITH_TASK_LOADER)
         
         #measure performance for the base task
         #after training each task    

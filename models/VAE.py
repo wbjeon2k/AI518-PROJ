@@ -73,7 +73,9 @@ class VAE(nn.Module):
         train_loss = self.loss(x)
         self.optimizer.zero_grad()
         train_loss.backward()
-        self.optimizer.step()       
+        self.optimizer.step()
+        
+        return train_loss    
 
     def testing(self, x):
         return self.loss(x)

@@ -7,6 +7,7 @@ import numpy as np
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+import pytorch_fid_wrapper as pfw
 
 
 class DepthToSpace(nn.Module):
@@ -171,17 +172,17 @@ class GAN(nn.Module):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.discriminator = Discriminator().to(self.device)
         self.generator = Generator().to(self.device)
-
+        self.generator_opt = torch.optim.Adam(self.generator.parameters(), lr=2e-4, betas=(0, 0.9))
+        self.discriminator_opt = torch.optim.Adam(self.discriminator.parameters(), lr=2e-4, betas=(0, 0.9))
     def learning(self, train_loader):
-        generator_opt = torch.optim.Adam(self.generator.parameters(), lr=2e-4, betas=(0, 0.9))
-        discriminator_opt = torch.optim.Adam(self.discriminator.parameters(), lr=2e-4, betas=(0, 0.9))
-        #count = 0
+        
+        count = 0
         x = train_loader
         if True:
         #for i, x in enumerate(train_loader):
             x = torch.tensor(x).float().to(self.device)
             x = 2 * (x - 0.5)
-            discriminator_opt.zero_grad()
+            self.discriminator_opt.zero_grad()
             generating = self.generator.sample(x.shape[0])
             eps = torch.rand(x.shape[0], 1, 1, 1).to(self.device)
             eps = eps.expand_as(x)
@@ -190,19 +191,28 @@ class GAN(nn.Module):
 
             discriminator_result = self.discriminator(interpolation)
             grad = torch.autograd.grad(outputs = discriminator_result, inputs = interpolation, grad_outputs = torch.ones(discriminator_result.size()).to(self.device), create_graph = True)[0]
-            grad = grad.reshape(256, -1)
+            grad = grad.reshape(128, -1)
             grad_norm = torch.sqrt(torch.sum(grad*grad, dim = 1)+ 1e-12)
             gradient_penalty = ((grad_norm - 1) * (grad_norm - 1)).mean()
             discriminator_loss = self.discriminator(generating).mean() - self.discriminator(x).mean() + 10 * gradient_penalty
             discriminator_loss.backward()
-            discriminator_opt.step()
-            generator_opt.zero_grad()
-            generating = self.generator.sample(256)
+            self.discriminator_opt.step()
+            self.generator_opt.zero_grad()
+            generating = self.generator.sample(128)
             generator_loss = -self.discriminator(generating).mean()
+                #print(generator_loss)
             generator_loss.backward()
-            generator_opt.step()
-    def sample(self):
-        return self.generator.sample(100)
-    
+            self.generator_opt.step()
 
-            
+            count = count + 1
+        return generator_loss
+    
+    
+    def sample(self):
+        return ((self.generator.sample(16).permute(0, 2, 3, 1).cpu().detach().numpy())* 0.5 + 0.5) * 255
+    
+    def testing(self, x):
+        x = torch.tensor(x).float().to(self.device)
+        x = 2 * (x - 0.5)
+        fake = self.generator.sample(x.shape[0])
+        return pfw.fid(torch.Tensor(fake), torch.Tensor(x))
