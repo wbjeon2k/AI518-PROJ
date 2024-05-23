@@ -347,6 +347,8 @@ class Glow(nn.Module):
             n_channel *= 2
         self.blocks.append(Block(n_channel, n_flow, split=False, affine=affine))
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        self.blocks.to(self.device)
 
     def forward(self, input):
         log_p_sum = 0
