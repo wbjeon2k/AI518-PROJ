@@ -121,6 +121,7 @@ class AutoregressiveTransformer(nn.Module):
         self.lm_head.to(self.device)
         self.token_embedding_table.to(self.device)
         self.position_embedding_table.to(self.device)
+        self.ln_f.to(self.device)
 
     def forward(self, idx):
         # src shape: [batch_size, seq_len]
