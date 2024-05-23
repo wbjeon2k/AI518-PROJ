@@ -171,7 +171,6 @@ dependencies:
   - pip:
       - contourpy==1.2.0
       - cycler==0.12.1
-      - deepul==0.1.0
       - fonttools==4.50.0
       - fsspec==2024.3.1
       - ipywidgets==8.1.2
