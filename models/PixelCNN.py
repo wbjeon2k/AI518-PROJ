@@ -76,6 +76,8 @@ class PixelCNN(nn.Module):
         super(PixelCNN, self).__init__()
 
         self.discrete_channel = discrete_channel
+        
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.MaskAConv = maskAConv(n_channel, 2 * h, k_size=7, stride=1, pad=3)
         MaskBConv = []
@@ -95,7 +97,7 @@ class PixelCNN(nn.Module):
             nn.Conv2d(1024, n_channel * discrete_channel, kernel_size=1, stride=1, padding=0))
         self.out.to(self.device)
         
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
         self.loss_fn = nn.CrossEntropyLoss()
         self.optimizer = optim.Adam(self.parameters(), lr= 0.001)
 
