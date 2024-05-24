@@ -1,0 +1,8 @@
+# example config yaml file
+test:
+  dataset_name: cifar10
+  dataset_path: './data'
+  experiment_key: 90afd80709
+  metric: FID
+  num_samples: 9
+  model_args:

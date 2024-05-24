@@ -1,7 +1,9 @@
 # dependencies
 import torch
 import torch.nn as nn
+import torch.utils
 from torch.utils.data import Dataset, DataLoader
+import torch.utils.data
 import torchvision.transforms as TF
 import yaml
 from tqdm import tqdm
@@ -20,15 +22,17 @@ from utils import config
 # implement training loop for the generated CIL task
 
 def test_performance_of_task(MODEL : nn.Module, task_set : Dataset):
+    MODEL.eval()
     TEST_LOADER = DataLoader(
         task_set, batch_size=256, num_workers=4
     )
-    test_loss = 0
-    for x,_ in TEST_LOADER:
-        batch_loss = MODEL.testing(x)
-        test_loss += batch_loss.item()
-        
-    return test_loss
+    with torch.no_grad():
+        test_loss = 0
+        for x,_ in TEST_LOADER:
+            batch_loss = MODEL.testing(x)
+            test_loss += batch_loss.item()
+            
+        return test_loss
 
 def train_CIL(MODEL: nn.Module):
     # get config from config.yaml
@@ -52,12 +56,14 @@ def train_CIL(MODEL: nn.Module):
         DATASET=TRAIN_SET_WHOLE, cls_total = cls_total, 
         cls_base = cls_base, num_tasks = num_tasks, cls_per_task = cls_per_task
     )
+    train_set_info['dataset'] = dset_name
     
     # task_to_test : [test_set_base, test_set_task0, ....]
     task_to_test, test_set_info = classincremental.generate_CIL_task(
         DATASET=TEST_SET_WHOLE, cls_total = cls_total, 
         cls_base = cls_base, num_tasks = num_tasks, cls_per_task = cls_per_task
     )
+    test_set_info['dataset'] = dset_name
     
     optim_name, learning_rate, epoch_base, \
         epoch_per_task, batch_size = config.get_train_hyper_parameters(cfg_dict)
@@ -105,7 +111,9 @@ def train_CIL(MODEL: nn.Module):
         
     # save training results
     hashlib.sha1().update(str(time.time()).encode("utf-8"))
-    experiment_key = str(hashlib.sha1().hexdigest()[30:40])
+    hashlib.md5().update(str(time.time()).encode("utf-8"))
+    experiment_key = str(hashlib.sha1().hexdigest()[30:40]) + \
+        str(hashlib.md5().hexdigest()[0:5])
     
     with open(f'result/{experiment_key}_train_set_info.json', 'w') as outfile:
         json.dump(train_set_info, outfile, ensure_ascii=True, indent=4)
@@ -117,8 +125,100 @@ def train_CIL(MODEL: nn.Module):
         json.dump(TRAIN_RESULT, f, ensure_ascii=True, indent=4)
     
     cfg_dict['model_type'] = MODEL.__class__.__name__
+    cfg_dict['experiment_key'] = experiment_key
     with open(f'result/{experiment_key}_cfg.json', 'w') as f:
         json.dump(cfg_dict, f, ensure_ascii=True, indent=4)
-      
+        
     torch.save(MODEL.state_dict(), f'result/{experiment_key}_model.pth')
     # end of CIL training
+    
+def get_test_metric(metric_name):
+    """"""
+
+import torchvision.transforms as TF
+def generate_task_to_test(experiment_key, DATASET: Dataset):
+    """
+    read test_set_info.json, reconstruct test set for base task
+    """
+    with open(f'result/{experiment_key}_test_set_info.json', 'r') as f:
+        test_info_dict = json.load(f)
+    
+    base_idx = test_info_dict['idx']['base']
+    base_subset = torch.utils.data.Subset(DATASET, base_idx)
+    return base_subset
+    
+def get_samples_from_model(MODEL: nn.Module):
+    """
+    get samples from model by num_samples
+    """
+    MODEL.eval()
+    ret = MODEL.sample()
+    if isinstance(ret, torch.Tensor):
+        ret = ret.detach().cpu().numpy()
+    return ret
+    
+def get_model_pth_from_key(MODEL : nn.Module, experiment_key):
+    """
+    load model from /result/{experiment_key}_model.pth
+    """
+    MODEL.load_state_dict(torch.load(f'./result/{experiment_key}_model.pth'))
+    return MODEL
+    
+# def test_performance_of_task(MODEL : nn.Module, task_set : Dataset):
+#     TEST_LOADER = DataLoader(
+#         task_set, batch_size=256, num_workers=4
+#     )
+#     test_loss = 0
+#     for x,_ in TEST_LOADER:
+#         batch_loss = MODEL.testing(x)
+#         test_loss += batch_loss.item()
+    
+#     return test_loss
+
+import os
+from PIL import Image
+import numpy as np
+
+def test_CIL(MODEL: nn.Module):
+    cfg_load = config.load_config_from_yaml(is_train=False)
+    cfg_dict = cfg_load['test']
+    
+    experiment_key = cfg_dict['experiment_key']
+    #metric_name = cfg_dict['metric_name']
+    #num_samples = cfg_dict['num_samples']
+    model_args = cfg_dict['model_args']
+    dset_name = cfg_dict['dataset_name']
+    dset_path = cfg_dict['dataset_path']
+    
+    transform = config.get_transform(is_train=False)
+    #TEST_METRIC = get_test_metric(metric_name)
+    WHOLE_TEST_SET = config.get_dataset(dset_name, dset_path, transform)
+    TASK_TO_TEST = generate_task_to_test(experiment_key, WHOLE_TEST_SET)
+    MODEL = get_model_pth_from_key(MODEL, experiment_key)
+    MODEL_TYPE = MODEL.__class__.__name__
+    
+    test_loss = test_performance_of_task(MODEL, TASK_TO_TEST)
+    
+    test_result_dict = dict()
+    
+    test_result_dict['experiment_key'] = experiment_key
+    test_result_dict['test_loss'] = test_loss
+    
+    try:
+        os.makedirs(f'./result/test_result/{experiment_key}', exist_ok=False)
+    except:
+        pass
+    
+    samples = get_samples_from_model(MODEL)
+    print(samples.shape)
+    B,H,W,C = samples.shape
+    sample_path_list = []
+    for i in range(B):
+        im = Image.fromarray(samples[i,:,:,:].astype(np.uint8))
+        im.save(f'./result/test_result/{experiment_key}/sample_{i}.png', "PNG")
+        sample_path_list.append(f'/result/test_result/{experiment_key}/sample_{i}.png')
+        
+    test_result_dict['samples'] = sample_path_list
+    
+    with open(f'./result/{experiment_key}_test_result.json', 'w') as outfile:
+        json.dump(test_result_dict, outfile,ensure_ascii=True, indent=4)

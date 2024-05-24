@@ -38,10 +38,12 @@ def train_model(MODEL_TYPE):
     MODEL = get_model(MODEL_TYPE)
     train.train_CIL(MODEL)
 
-def test_model():
+def test_model(MODEL_TYPE):
     """
     measure the performance of the first task (base task)
     """
+    MODEL = get_model(MODEL_TYPE)
+    train.test_CIL(MODEL)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -56,6 +58,6 @@ if __name__ == '__main__':
     if args.mode == exec_mode[0]: #train
         train_model(args.model)
     elif args.mode == exec_mode[1]: #test
-        test_model()
+        test_model(args.model)
     else:
         raise TypeError

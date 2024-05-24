@@ -6,8 +6,8 @@ train:
 hparam:
   optim_name: adam
   learning_rate: 0.001
-  epoch_base: 1
-  epoch_per_task: 1
+  epoch_base: 100
+  epoch_per_task: 50
   batch_size: 64
 
 task_info:

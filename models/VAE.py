@@ -44,7 +44,7 @@ class VAE(nn.Module):
         self.model = nn.Sequential(self.encoder, self.decoder).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr= 0.001)
 
-    def sample(self):
+    def sample(self, **kwargs):
         z = torch.randn(100, 16).to(self.device)
         samples = torch.clamp(self.decoder(z), -1, 1)
         samples = samples.permute(0, 2, 3, 1).cpu().detach().numpy() * 0.5 + 0.5

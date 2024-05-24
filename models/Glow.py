@@ -379,7 +379,8 @@ class Glow(nn.Module):
             else:
                 input = block.reverse(input, z_list[-(i + 1)], reconstruct=reconstruct)
 
-        return input
+        # change type as numpy from torch tensor
+        return input.detach().cpu().numpy()
     
     #===================================================================================================
 

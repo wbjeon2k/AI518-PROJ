@@ -6,10 +6,17 @@ from torchvision.datasets import CIFAR10,CIFAR100,MNIST,FashionMNIST
 import torchvision.transforms as TF
 import yaml
 
-def load_config_from_yaml():
-    with open('config.yaml', 'r') as f:
-        loaded_config = yaml.load(f, Loader=yaml.SafeLoader)
-    return loaded_config
+def load_config_from_yaml(is_train = True):
+    if is_train is True:
+        with open('train_config.yaml', 'r') as f:
+            loaded_config = yaml.load(f, Loader=yaml.SafeLoader)
+        return loaded_config
+    elif is_train is False:
+        with open('test_config.yaml', 'r') as f:
+            loaded_config = yaml.load(f, Loader=yaml.SafeLoader)
+        return loaded_config
+    else:
+        raise ValueError
 
 def get_total_number_of_cls(dset_name):
 

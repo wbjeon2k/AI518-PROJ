@@ -162,7 +162,7 @@ class PixelCNN(nn.Module):
                     probs = torch.softmax(out[:, :, i, j], dim=2).data  # [batch_size, 256]
                     pixel = torch.multinomial(probs[:,k], 1).float() / 255.
                     x[:, k, i, j] = pixel[:, 0] 
-        return x
+        return x.detach().cpu().numpy()
     """
     def sample(self):
         
