@@ -161,7 +161,9 @@ def get_model_pth_from_key(MODEL : nn.Module, experiment_key):
     """
     load model from /result/{experiment_key}_model.pth
     """
-    MODEL.load_state_dict(torch.load(f'./result/{experiment_key}_model.pth'))
+    current_path = os.getcwd()
+    pth_file_path = os.path.join(current_path, f'result/{experiment_key}_model.pth')
+    MODEL.load_state_dict(torch.load(pth_file_path))
     return MODEL
     
 # def test_performance_of_task(MODEL : nn.Module, task_set : Dataset):

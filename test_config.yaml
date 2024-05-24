@@ -2,7 +2,7 @@
 test:
   dataset_name: cifar10
   dataset_path: './data'
-  experiment_key: 90afd80709
+  experiment_key: 90afd80709d41d8
   metric: FID
   num_samples: 9
   model_args:
