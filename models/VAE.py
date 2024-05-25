@@ -36,15 +36,10 @@ class VAE(nn.Module):
         nn.Conv2d(32, 3, 3, 1, 1)
         )
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        # set device
-        # self.encoder.to(self.device)
-        # self.decoder.to(self.device)
-        
-        self.model = nn.Sequential(self.encoder, self.decoder).to(self.device)
+        self.model = nn.Sequential(self.encoder, self.decoder)
         self.optimizer = optim.Adam(self.model.parameters(), lr= 0.001)
 
-    def sample(self, **kwargs):
+    def sample(self): # 0~255
         z = torch.randn(100, 16).to(self.device)
         samples = torch.clamp(self.decoder(z), -1, 1)
         samples = samples.permute(0, 2, 3, 1).cpu().detach().numpy() * 0.5 + 0.5
@@ -65,25 +60,20 @@ class VAE(nn.Module):
         total_loss = reconstruction_loss+kl_loss
         return total_loss
     
-    def reconstrucion(self, x):
+    def reconstrucion(self, x): # 0~255
+        x = x.to(self.device)
         x = 2 * x - 1
         z, _ = self.encoder(x).chunk(2, dim = 1)
         x_recon = torch.clamp(self.decoder(z), -1, 1)
         reconstructions = torch.stack((x, x_recon), dim=1).view(-1, 3, 32, 32) * 0.5 + 0.5
-        reconstructions = reconstructions.permute(0, 2, 3, 1).detach().numpy() * 255
-
+        reconstructions = reconstructions.permute(0, 2, 3, 1).cpu().detach().numpy() * 255
         return reconstructions
         
     def learning(self, x):
-        # set x device same with model's device
-        x = x.to(self.device)
         train_loss = self.loss(x)
         self.optimizer.zero_grad()
         train_loss.backward()
-        self.optimizer.step()
-        
-        return train_loss    
+        self.optimizer.step()       
 
     def testing(self, x):
-        x = x.to(self.device)
         return self.loss(x)

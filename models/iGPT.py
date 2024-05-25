@@ -84,7 +84,7 @@ class Block(nn.Module):
         return x
 
 class AutoregressiveTransformer(nn.Module): 
-    def __init__(self, input_dim=10000, n_head=4,
+    def __init__(self, input_dim=12289, n_head=4,
                  num_layers=2,
                  max_seq_length=1025):
         
@@ -116,19 +116,12 @@ class AutoregressiveTransformer(nn.Module):
         self.ln_f = nn.LayerNorm(n_embd) # final layer norm
         self.lm_head = nn.Linear(n_embd, input_dim)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        self.blocks.to(self.device)
-        self.lm_head.to(self.device)
-        self.token_embedding_table.to(self.device)
-        self.position_embedding_table.to(self.device)
-        self.ln_f.to(self.device)
 
     def forward(self, idx):
         # src shape: [batch_size, seq_len]
 
         B, T = idx.shape
 
-        idx = idx.to(self.device)
         # idx and targets are both (B,T) tensor of integers
         tok_emb = self.token_embedding_table(idx) # (B,T,C)
         pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,C)
@@ -155,7 +148,7 @@ class AutoregressiveTransformer(nn.Module):
             
             return token
         # Apply the mapping to each pixel
-        data = data.cpu()
+
         data_tokenized = np.apply_along_axis(map_rgb_to_token, -1, data)
 
         # Flatten the image
@@ -179,7 +172,40 @@ class AutoregressiveTransformer(nn.Module):
                 probs = F.softmax(logits, dim=-1)
                 idx_next = torch.multinomial(probs, num_samples=1)
                 src = torch.cat((src, idx_next), dim=1)
+        
+        # Function to map each token back to RGB values
+        def map_token_to_rgb(token):
+            r = (token >> 4) & 0x03
+            g = (token >> 2) & 0x03
+            b = token & 0x1F
+            return [r, g, b]
+        # Convert tokens to RGB values and reshape
+        generated_images = src[:, 1:].cpu().numpy()
+        generated_images_rgb = np.array([[map_token_to_rgb(token) for token in row] for row in generated_images])
+        print(np.max(generated_images))
+        print(np.max(generated_images_rgb))
+        generated_images_rgb = generated_images_rgb.reshape(num_samples, H, W, 3)  # Reshape to (num_samples, H, W, C)
 
+        return generated_images_rgb/3 *255
+    
+    def reconstruction(self,x, num_samples = 100, image_shape = (32,32,3), bos_token=2):
+        H, W, _ = image_shape  # C is not used directly as each token represents a full RGB pixel
+        src = torch.full((num_samples, 1), bos_token, dtype=torch.long, device=device)
+        temp = x[:,:,:16,:]
+        x = torch.Tensor(x).type(torch.int32)
+        x = (x * 255)
+        x = x[:,:,:16,:]
+        x = self.preprocess_data(x).to(device)
+        src = x
+        with torch.no_grad():
+            for _ in range((H//2) * W):  # Loop for H*W instead of H*W*C
+                logits = self.forward(src)
+                logits = logits[:, -1, :]
+                probs = F.softmax(logits, dim=-1)
+                idx_next = torch.multinomial(probs, num_samples=1)
+                src = torch.cat((src, idx_next), dim=1)
+                
+        src = src[:,48:]
         # Function to map each token back to RGB values
         def map_token_to_rgb(token):
             r = (token >> 4) & 0x03
@@ -190,8 +216,10 @@ class AutoregressiveTransformer(nn.Module):
         # Convert tokens to RGB values and reshape
         generated_images = src[:, 1:].cpu().numpy()
         generated_images_rgb = np.array([[map_token_to_rgb(token) for token in row] for row in generated_images])
-        generated_images_rgb = generated_images_rgb.reshape(num_samples, H, W, 3)  # Reshape to (num_samples, H, W, C)
-
+        generated_images_rgb = generated_images_rgb.reshape(num_samples, H//2, W, 3)  # Reshape to (num_samples, H, W, C)
+        temp = temp * 255
+        generated_images_rgb = generated_images_rgb/3 *255 
+        generated_images_rgb = np.concatenate((np.moveaxis(temp, source = 1, destination = 3),generated_images_rgb),axis =1)
         return generated_images_rgb
     
     def loss(self, x):
@@ -203,15 +231,12 @@ class AutoregressiveTransformer(nn.Module):
         return criterion(outputs.view(-1, outputs.size(-1)), targets.view(-1))
 
     def learning(self, x):
-        # set x device same with model's device
-        x = x.to(self.device)
-        x = x * 255
+        
         x = x.type(torch.int32)
+        x = (x * 255)
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer.zero_grad()
         losses = self.loss(x)
         losses.backward()
         optimizer.step()
-        
-    def testing(self, x):
-        return torch.tensor(1).to(self.device)
-        
+        return losses

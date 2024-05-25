@@ -218,8 +218,8 @@ class GAN(nn.Module):
         return generator_loss
     
     
-    def sample(self):
-        return ((self.generator.sample(16).permute(0, 2, 3, 1).cpu().detach().numpy())* 0.5 + 0.5) * 255
+    def sample(self): #0~225
+        return ((self.generator.sample(100).permute(0, 2, 3, 1).cpu().detach().numpy())* 0.5 + 0.5) * 255
     
     def testing(self, x : torch.Tensor):
         #pytorch_fid_wrapper/fid_score.py", line 166, in calculate_frechet_distance
@@ -240,3 +240,13 @@ class GAN(nn.Module):
         fid.update(x_int, real=True)
         fid.update(fake, real=False)
         return fid.compute()
+    
+    def reconstruction(self, x):
+        x = x.clone().detach().float().to(self.device)
+        x = 2 * (x - 0.5)
+        self.discriminator_opt.zero_grad()
+        generating = self.generator.sample(x.shape[0])
+        eps = torch.rand(x.shape[0], 1, 1, 1).to(self.device)
+        eps = eps.expand_as(x)
+        interpolation = eps * x.data + (1 - eps) * generating.data
+        return ((interpolation.permute(0, 2, 3, 1).cpu().detach().numpy())* 0.5 + 0.5) * 255
